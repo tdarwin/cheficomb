@@ -193,43 +193,5 @@ class Honeycomb
       Chef::Log.info "Sending trace to Honeycomb API at #{url}#{path}"
       Chef::HTTP::SimpleJSON.new(url).post(path, trace_batch, headers)
     end
-
-    def old_report(run_status)
-      url = run_status.node['honeycomb']['api_url']
-      path = "/1/events/#{run_status.node['honeycomb']['dataset']}"
-      headers = {
-        "X-Honeycomb-Team" => run_status.node['honeycomb']['writekey'],
-        "X-Event-Time" => run_status.start_time.iso8601,
-      }
-
-      run_backtrace = nil
-      run_backtrace = run_status.backtrace.join("\n") unless run_status.backtrace.nil?
-
-      api_data = {
-        "trace.trace_id" => generate_trace_context('trace'),
-        "trace.span_id" => generate_trace_context('span'),
-        'meta.span_type' => 'root',
-        'name' => 'chef-client',
-        'service.name' => 'chef',
-        'span.kind' => 'client',
-        'duration_ms' => (run_status.elapsed_time * 1000.0),
-        "node.name" => run_status.node.name,
-        "start_time" => run_status.start_time,
-        "end_time" => run_status.end_time,
-        "elapsed_time" => run_status.elapsed_time,
-        "success" => run_status.success?,
-        "exception" => run_status.exception,
-        "backtrace" => run_backtrace,
-        # "updated_resources" => run_status.updated_resources,
-        # "converge_duration" => converge_duration,
-        # "converge_start" => converge_start,
-        # "handlers_duration" => handlers_duration,
-        # "handlers_start" => handlers_start,
-        # "num_resources_modified" => num_resources_modified,
-        "run_list" => run_status.node.run_list.to_s,
-      }
-      Chef::Log.debug "about to submit api data #{api_data}"
-      Chef::HTTP::SimpleJSON.new(url).post(path, api_data, headers)
-    end
   end
 end
