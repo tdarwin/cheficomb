@@ -66,7 +66,6 @@ class Honeycomb
         'service.name' => 'chef',
         'name' => args[:event] ||= 'chef-client',
         'run_id' => run_id,
-        'Timestamp' => args[:timestamp],
         'chef.handler_count' => args[:handler_count],
         'chef.resource_name' => args[:resource_name],
         'chef.resource_recipe' => args[:resource_recipe],
@@ -133,8 +132,8 @@ class Honeycomb
       #########################################
       if args[:end_run] == true
         h = {
-          'start_time' => run_status.start_time,
-          'end_time' => run_status.end_time,
+          'start_time' => run_status.start_time.iso8601(fraction_digits = 3),
+          'end_time' => run_status.end_time.iso8601(fraction_digits = 3),
           'duration_ms' => (run_status.elapsed_time * 1000.0),
           'success' => run_status.success?,
         }
@@ -144,7 +143,7 @@ class Honeycomb
         #########################################
         # If run fails, make it a failure
         #########################################
-        unless run_status.success?
+        unless run_status.success? || args[:error] == false
           run_backtrace = nil
           run_backtrace = run_status.backtrace.join("\n") unless run_status.backtrace.nil?
 
@@ -177,6 +176,9 @@ class Honeycomb
       # Return the completed span data
       #########################################
       return_data = Hash.new
+      return_data['time'] = args[:start_time] ||= run_status.start_time.iso8601(fraction_digits = 3)
+      # return_data['start_time'] = run_status.methods.include?(:start_time) ? run_status.start_time : args[:start_time]
+      # return_data['end_time'] = run_status.methods.include?(:end_time) ? run_status.end_time : args[:end_time]
       return_data['data'] = span_data
       return_data
     end
