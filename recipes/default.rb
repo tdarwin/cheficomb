@@ -20,17 +20,20 @@ Chef.event_handler do
     @comp_stop = Time.parse(Time.now.iso8601(fraction_digits = 3))
   end
   on :converge_start do
+    |run_context|
+    @conv_start_run_context = run_context
     @conv_start = Time.parse(Time.now.iso8601(fraction_digits = 3))
     @current_cookbook_name = nil
     @current_recipe_name = nil
   end
+
   on :converge_complete do
     recipe_stop = Time.parse(Time.now.iso8601(fraction_digits = 3))
 
     duration = recipe_stop - @recipe_start
     duration_ms = duration * 1000
     recipe_span = ::Honeycomb.generate_span(
-      @run_status,
+      @conv_start_run_context,
       trace_id: trace_id,
       span_id: @current_recipe_span,
       parent_id: @current_cookbook_span,
@@ -47,7 +50,7 @@ Chef.event_handler do
     duration = cookbook_stop - @cookbook_start
     duration_ms = duration * 1000
     cookbook_span = ::Honeycomb.generate_span(
-      @run_status,
+      @conv_start_run_context,
       trace_id: trace_id,
       span_id: @current_cookbook_span,
       parent_id: converge_span_id,
@@ -64,7 +67,7 @@ Chef.event_handler do
     conv_duration_ms = conv_duration * 1000
 
     converge_span = ::Honeycomb.generate_span(
-      @run_status,
+      @conv_start_run_context,
       trace_id: trace_id,
       span_id: converge_span_id,
       parent_id: root_span_id,
@@ -75,6 +78,7 @@ Chef.event_handler do
     )
     trace_batch << converge_span
   end
+
   on :converge_failed do
     |exception|
     recipe_stop = Time.parse(Time.now.iso8601(fraction_digits = 3))
@@ -82,7 +86,7 @@ Chef.event_handler do
     duration = recipe_stop - @recipe_start
     duration_ms = duration * 1000
     recipe_span = ::Honeycomb.generate_span(
-      @run_status,
+      @conv_start_run_context,
       trace_id: trace_id,
       span_id: @current_recipe_span,
       parent_id: @current_cookbook_span,
@@ -101,7 +105,7 @@ Chef.event_handler do
     duration = cookbook_stop - @cookbook_start
     duration_ms = duration * 1000
     cookbook_span = ::Honeycomb.generate_span(
-      @run_status,
+      @conv_start_run_context,
       trace_id: trace_id,
       span_id: @current_cookbook_span,
       parent_id: converge_span_id,
@@ -120,7 +124,7 @@ Chef.event_handler do
     conv_duration_ms = conv_duration * 1000
 
     converge_span = ::Honeycomb.generate_span(
-      @run_status,
+      @conv_start_run_context,
       trace_id: trace_id,
       span_id: converge_span_id,
       parent_id: root_span_id,
@@ -132,6 +136,19 @@ Chef.event_handler do
       event: 'converge',
     )
     trace_batch << converge_span
+  end
+
+  on :resource_skipped do
+    @resource_status = 'skipped'
+  end
+  on :resource_updated do
+    @resource_status = 'updated'
+  end
+  on :resource_up_to_date do
+    @resource_status = 'up to date'
+  end
+  on :resource_failed do
+    @resource_status = 'failed'
   end
   on :resource_completed do
     |resource|
@@ -152,7 +169,7 @@ Chef.event_handler do
       duration_ms = duration * 1000
 
       recipe_span = ::Honeycomb.generate_span(
-        @run_status,
+        resource,
         trace_id: trace_id,
         span_id: @current_recipe_span,
         parent_id: @current_cookbook_span,
@@ -181,7 +198,7 @@ Chef.event_handler do
       duration = cookbook_stop - @cookbook_start
       duration_ms = duration * 1000
       cookbook_span = ::Honeycomb.generate_span(
-        @run_status,
+        resource,
         trace_id: trace_id,
         span_id: @current_cookbook_span,
         parent_id: converge_span_id,
@@ -197,8 +214,17 @@ Chef.event_handler do
       @current_cookbook_name = resource.cookbook_name
       @current_cookbook_span = SecureRandom.hex(8)
     end
-    span = ::Honeycomb.generate_span(
-      @run_status,
+
+    if @resource_status.nil?
+      if resource.updated?
+        @resource_status = 'updated'
+      else
+        @resource_status = 'not-updated'
+      end
+    end
+    resource_type = resource.to_s.gsub(/\[.*\]$/, '')
+    resource_span = ::Honeycomb.generate_span(
+      resource,
       trace_id: trace_id,
       span_id: SecureRandom.hex(8),
       parent_id: @current_recipe_span,
@@ -206,12 +232,14 @@ Chef.event_handler do
       start_time: resource_start.iso8601(fraction_digits =3),
       end_time: resource_stop.iso8601(fraction_digits = 3),
       resource_name: resource.to_s,
-      resource_recipe: resource.recipe_name,
-      resource_cookbook: resource.cookbook_name,
+      resource_type: resource_type,
+      recipe: resource.recipe_name,
+      cookbook: resource.cookbook_name,
       resource_action: resource.action,
+      resource_status: @resource_status,
       event: resource.to_s,
     )
-    trace_batch << span
+    trace_batch << resource_span
   end
 
   Chef::Client.when_run_completes_successfully {|run_status| @handler.instance_variable_set(:@run_status, run_status) }

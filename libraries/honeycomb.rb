@@ -2,7 +2,7 @@ require "chef/http/simple_json"
 require "time"
 require "securerandom" unless defined?(SecureRandom)
 
-VERSION="0.1.1"
+VERSION="1.0.0"
 
 class Honeycomb
   class << self
@@ -65,13 +65,33 @@ class Honeycomb
         'trace.parent_id' => args[:parent_id] ||= nil,
         'service.name' => 'chef',
         'name' => args[:event] ||= 'chef-client',
-        'run_id' => run_id,
-        'chef.handler_count' => args[:handler_count],
-        'chef.resource_name' => args[:resource_name],
-        'chef.resource_recipe' => args[:resource_recipe],
-        'chef.resource_cookbook' => args[:resource_cookbook],
-        'chef.resource_action' => args[:resource_action],
+        'run_id' => run_id,        
       }
+
+      config_data = {
+        'chef.config.server' => Chef::Config[:chef_server_url],
+        'chef.config.fips' => Chef::Config[:fips],
+        'chef.config.data_collector.server_url' => Chef::Config[:data_collector][:server_url],
+        'chef.config.http_proxy' => Chef::Config[:http_proxy],
+        'chef.config.https_proxy' => Chef::Config[:https_proxy],
+        'chef.config.ftp_proxy' => Chef::Config[:ftp_proxy],
+        'chef.config.no_proxy' => Chef::Config[:no_proxy],
+        'chef.config.rubygems_url' => Chef::Config[:rubygems_url],
+        'chef.config.policy_name' => Chef::Config[:policy_name],
+        'chef.config.policy_group' => Chef::Config[:policy_grid],
+        'chef.config.named_run_list' => Chef::Config[:named_run_list],
+      }
+      merge_hash(config_data, span_data)
+
+      resource_data = {
+        'chef.resource_name' => args[:resource_name],
+        'chef.resource_type' => args[:resource_type],
+        'chef.recipe' => args[:recipe],
+        'chef.cookbook' => args[:cookbook],
+        'chef.resource_action' => args[:resource_action],
+        'chef.resource_status' => args[:resource_status],
+      }
+      merge_hash(resource_data, span_data)
 
       if node_exists == true
         h = {
@@ -95,11 +115,13 @@ class Honeycomb
           'chef.policy_group' => run_status.node['policy_group'],
           'chef.policy_revision' => run_status.node['policy_revision'],
           'chef.roles' => run_status.node['roles'],
-          'node.random_fail' => run_status.node['random_fail'],
           # 'chef.complete_node' => ::Chef::DSL::RenderHelpers::render_json(run_status.node),
         }
 
         merge_hash(h, span_data)
+
+        n = run_status.node['honeycomb']['tracked_attributes']
+        merge_hash(n, span_data)
       end
 
       #########################################
