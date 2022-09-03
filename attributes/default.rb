@@ -3,7 +3,7 @@ default['audit']['compliance_phase'] = false
 default['random_files'] = SecureRandom.random_number(99)
 default['random_fail'] = SecureRandom.random_number(99)
 
-default['honeycomb']['writekey'] = "0NiphWenWaGCzrH6oO93vA"
+default['honeycomb']['writekey'] = "<API_KEY_GOES_HERE>"
 default['honeycomb']['api_url'] = "https://api.honeycomb.io"
 default['honeycomb']['dataset'] = "chef"
 default['honeycomb']['automate_fqdn'] = "automate.example.com"
