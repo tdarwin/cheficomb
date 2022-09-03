@@ -11,4 +11,6 @@ default['honeycomb']['tracked_attributes'] = {
   'chef.node.random_files' => node['random_files'],
   'chef.node.random_fail' => node['random_fail'],
   'chef.node.audit.compliance_phase' => node['audit']['compliance_phase'],
+  'myapp.version' => node['myapp']['version'],
+  'yourapp.version' => node['yourapp']['version'],
 }

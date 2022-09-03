@@ -9,7 +9,6 @@ Chef.event_handler do
   root_span_id = SecureRandom.hex(8)
   compile_span_id = SecureRandom.hex(8)
   converge_span_id = SecureRandom.hex(8)
-  # compliance_span_id = SecureRandom.hex(8)
   trace_batch = []
   comp_start = Time.parse(Time.now.iso8601(fraction_digits = 3))
   @conv_start = Time.parse(Time.now.iso8601(fraction_digits = 3))

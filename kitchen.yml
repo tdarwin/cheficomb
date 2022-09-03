@@ -1,10 +1,12 @@
 ---
 driver:
   name: dokken
+  chef_version: 13
   privileged: true  # allows systemd services to start
 
 provisioner:
   name: dokken
+  clean_dokken_sandbox: false
 
 transport:
   name: dokken
@@ -16,37 +18,34 @@ platforms:
   # @see https://github.com/chef-cookbooks/testing_examples/blob/main/kitchen.dokken.yml
   # @see https://hub.docker.com/u/dokken
 
-  <% 40.times do |i| %>
-  - name: ubuntu-20.04-<%= i.to_s %>
+  - name: ubuntu-20.04
     driver:
       image: dokken/ubuntu-20.04
       pid_one_command: /bin/systemd
       intermediate_instructions:
         - RUN /usr/bin/apt-get update
-  - name: ubuntu-22.04-<%= i.to_s %>
+  - name: ubuntu-22.04
     driver:
       image: dokken/ubuntu-22.04
       pid_one_command: /bin/systemd
       intermediate_instructions:
         - RUN /usr/bin/apt-get update
-  - name: amazonlinux-2022-<%= i.to_s %>
+  - name: amazonlinux-2022
     driver:
       image: dokken/amazonlinux-2022
-  - name: almalinux-8-<%= i.to_s %>
+  - name: almalinux-8
     driver:
       image: dokken/almalinux-8
       pid_one_command: /usr/lib/systemd/systemd
-  - name: almalinux-9-<%= i.to_s %>
+  - name: almalinux-9
     driver:
       image: dokken/almalinux-9
       pid_one_command: /usr/lib/systemd/systemd
-  <% end %>
 
 suites:
   - name: default
-    run_list:
-      - recipe[cheficomb::default]
-    verifier:
-      inspec_tests:
-        - test/integration/default
     attributes:
+      myapp:
+        version: 5.44.0
+      yourapp:
+        version: 6.31.5
